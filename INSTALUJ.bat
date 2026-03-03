@@ -31,7 +31,7 @@ if exist "%~dp0%EXE_NAME%" (
     exit /b 1
 )
 
-:: Kopiowanie config.json (tylko jeśli nie istnieje lub jeśli jest w folderze źródłowym)
+:: Kopiowanie config.json
 if exist "%~dp0config.json" (
     if not exist "%INSTALL_DIR%\config.json" (
         copy /Y "%~dp0config.json" "%INSTALL_DIR%\config.json"
@@ -41,9 +41,32 @@ if exist "%~dp0config.json" (
     )
 )
 
-:: Tworzenie skrótu na pulpicie
-echo [..] Tworzenie skrotu na pulpicie...
-set "DESKTOP=%USERPROFILE%\Desktop"
+:: Wykrywanie sciezki do pulpitu (obsluga OneDrive, polskich Windows itd.)
+echo [..] Szukanie pulpitu...
+set "DESKTOP="
+
+:: Metoda 1: Registry (najdokladniejsza)
+for /f "tokens=2*" %%a in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v Desktop 2^>nul') do set "DESKTOP=%%b"
+:: Zamiana %USERPROFILE% na wartosc
+if defined DESKTOP call set "DESKTOP=%DESKTOP%"
+
+:: Metoda 2: Fallback - sprawdz popularne lokalizacje
+if not exist "%DESKTOP%" (
+    if exist "%USERPROFILE%\OneDrive\Pulpit" set "DESKTOP=%USERPROFILE%\OneDrive\Pulpit"
+)
+if not exist "%DESKTOP%" (
+    if exist "%USERPROFILE%\OneDrive\Desktop" set "DESKTOP=%USERPROFILE%\OneDrive\Desktop"
+)
+if not exist "%DESKTOP%" (
+    if exist "%USERPROFILE%\Pulpit" set "DESKTOP=%USERPROFILE%\Pulpit"
+)
+if not exist "%DESKTOP%" (
+    set "DESKTOP=%USERPROFILE%\Desktop"
+)
+
+echo     Pulpit: %DESKTOP%
+
+:: Tworzenie skrotu na pulpicie
 set "SCRIPT=%TEMP%\create_shortcut.vbs"
 
 echo Set oWS = WScript.CreateObject("WScript.Shell") > "%SCRIPT%"
@@ -55,16 +78,21 @@ echo oLink.Description = "KSeF Panel - Zarzadzanie fakturami" >> "%SCRIPT%"
 echo oLink.Save >> "%SCRIPT%"
 
 cscript //nologo "%SCRIPT%"
-del "%SCRIPT%"
-echo [OK] Skrot "%SHORTCUT_NAME%" utworzony na pulpicie
+if errorlevel 1 (
+    echo [UWAGA] Nie udalo sie utworzyc skrotu automatycznie.
+    echo         Utworz skrot recznie: prawy klik na %INSTALL_DIR%\%EXE_NAME% -^> Wyslij do -^> Pulpit
+) else (
+    del "%SCRIPT%" 2>nul
+    echo [OK] Skrot "%SHORTCUT_NAME%" utworzony na pulpicie
+)
 
 echo.
 echo ============================================
 echo    INSTALACJA ZAKONCZONA!
 echo ============================================
 echo.
-echo  Skrot "KSeF Panel" na pulpicie - gotowy.
 echo  Folder: %INSTALL_DIR%
+echo  Skrot: %DESKTOP%\%SHORTCUT_NAME%.lnk
 echo.
 echo  Aby zmienic token KSeF:
 echo  - Otworz aplikacje i przejdz do Ustawien

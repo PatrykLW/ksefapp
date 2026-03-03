@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, jsonify, request
-from ..services.config_manager import load_config, save_config
+from ..services.config_manager import load_config, save_config, get_config_path_info
 from ..services.ksef_api import KSeFAPI
 from ..services import db
 
@@ -18,6 +18,7 @@ def help_token():
 def api_get_settings():
     config = load_config()
     config['ksef_token_masked'] = _mask_token(config.get('ksef_token', ''))
+    config['config_path'] = get_config_path_info()
     return jsonify(config)
 
 @bp.route('/api/settings', methods=['POST'])

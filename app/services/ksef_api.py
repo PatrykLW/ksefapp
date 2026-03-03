@@ -41,13 +41,31 @@ class KSeFAPI:
             try:
                 body = resp.json()
             except Exception:
-                body = resp.text
+                body = resp.text[:500] if resp.text else f"HTTP {resp.status_code}"
             raise KSeFError(
                 f"Błąd KSeF API ({context}): HTTP {resp.status_code}",
                 status_code=resp.status_code,
                 details=body
             )
         return resp
+
+    def _parse_json(self, resp, context=""):
+        """Safely parse JSON from response, with clear error on HTML/other responses."""
+        content_type = resp.headers.get('Content-Type', '')
+        if 'json' not in content_type and 'octet-stream' not in content_type:
+            raise KSeFError(
+                f"KSeF zwrócił nieoczekiwany format ({context}): {content_type}",
+                status_code=resp.status_code,
+                details=resp.text[:300] if resp.text else ''
+            )
+        try:
+            return resp.json()
+        except Exception as e:
+            raise KSeFError(
+                f"Błąd parsowania odpowiedzi KSeF ({context}): {e}",
+                status_code=resp.status_code,
+                details=resp.text[:300] if resp.text else ''
+            )
 
     # --- Authentication ---
 
@@ -69,7 +87,7 @@ class KSeFAPI:
             }
         )
         self._handle_response(resp, "AuthorisationChallenge")
-        return resp.json()
+        return self._parse_json(resp, "AuthorisationChallenge")
 
     def _init_token_session(self, challenge_data):
         """Step 2: Initialize session with token."""
@@ -87,7 +105,7 @@ class KSeFAPI:
             }
         )
         self._handle_response(resp, "InitToken")
-        data = resp.json()
+        data = self._parse_json(resp, "InitToken")
 
         session_token = data.get('sessionToken', {})
         self.session_token = session_token.get('token', '')
@@ -155,7 +173,7 @@ class KSeFAPI:
             json=payload
         )
         self._handle_response(resp, "Query/Invoice/Sync")
-        return resp.json()
+        return self._parse_json(resp, "Query/Invoice/Sync")
 
     def download_invoice(self, ksef_reference_number):
         """Download a single invoice by its KSeF reference number."""

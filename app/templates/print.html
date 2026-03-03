@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block page_title %}Drukowanie{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-xl shadow-sm border p-5 mb-5">
+            <h3 class="font-semibold text-gray-700 mb-3">Niewydrukowane faktury</h3>
+            <table class="w-full text-sm" id="print-table">
+                <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="p-3 w-8"><input type="checkbox" id="print-select-all" onchange="togglePrintSelectAll()" class="rounded border-gray-300 text-ksef-600"></th>
+                        <th class="p-3 text-left">Numer</th>
+                        <th class="p-3 text-left">Kontrahent</th>
+                        <th class="p-3 text-right">Brutto</th>
+                        <th class="p-3 text-center">Data</th>
+                        <th class="p-3 text-center">Podgląd</th>
+                    </tr>
+                </thead>
+                <tbody id="print-tbody">
+                    <tr><td colspan="6" class="text-center py-8 text-gray-400">Ładowanie...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div>
+        <div class="bg-white rounded-xl shadow-sm border p-5 sticky top-20">
+            <h3 class="font-semibold text-gray-700 mb-4">Panel drukowania</h3>
+
+            <div class="mb-4">
+                <label class="block text-xs text-gray-500 mb-1">Drukarka</label>
+                <select id="print-printer" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ksef-500">
+                    <option value="">Ładowanie...</option>
+                </select>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="printSelected()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Drukuj zaznaczone
+                </button>
+                <button onclick="printAllUnprinted()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm font-medium transition">
+                    Drukuj WSZYSTKIE niewydrukowane
+                </button>
+            </div>
+
+            <div class="mt-4 pt-4 border-t text-sm text-gray-500">
+                <p>Zaznaczone: <strong id="print-selected-count">0</strong></p>
+                <p>Łączna kwota: <strong id="print-selected-total">0.00 PLN</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="preview-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl w-[700px] max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-3 border-b">
+            <h3 class="font-semibold text-gray-700">Podgląd faktury</h3>
+            <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+        <iframe id="preview-iframe" class="flex-1 w-full" style="min-height:400px"></iframe>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let printInvoices = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadPrintPrinters();
+    await loadPrintInvoices();
+});
+
+async function loadPrintPrinters() {
+    const resp = await fetch('/api/printers');
+    const data = await resp.json();
+    const select = document.getElementById('print-printer');
+    select.innerHTML = '<option value="">-- Domyślna --</option>';
+    (data.printers || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name + (p.is_default ? ' (domyślna)' : '');
+        if (p.name === data.default_printer) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+async function loadPrintInvoices() {
+    const resp = await fetch('/api/invoices');
+    printInvoices = await resp.json();
+    const unprinted = printInvoices.filter(i => !i.printed);
+    const tbody = document.getElementById('print-tbody');
+
+    if (!unprinted.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Wszystkie faktury wydrukowane!</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = unprinted.map(inv => {
+        const contractor = inv.invoice_type === 'sales' ? inv.buyer_name : inv.seller_name;
+        return `<tr class="border-b hover:bg-gray-50">
+            <td class="p-3"><input type="checkbox" class="print-cb rounded border-gray-300 text-ksef-600" value="${inv.id}" data-amount="${inv.gross_amount}" onchange="updatePrintCount()"></td>
+            <td class="p-3 font-medium">${inv.invoice_number || inv.ksef_number}</td>
+            <td class="p-3 text-gray-600">${contractor || '-'}</td>
+            <td class="p-3 text-right font-medium">${formatMoney(inv.gross_amount)}</td>
+            <td class="p-3 text-center text-gray-500">${inv.issue_date || '-'}</td>
+            <td class="p-3 text-center"><button onclick="showPreview(${inv.id})" class="text-ksef-600 hover:underline text-xs">Podgląd</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function togglePrintSelectAll() {
+    const checked = document.getElementById('print-select-all').checked;
+    document.querySelectorAll('.print-cb').forEach(cb => cb.checked = checked);
+    updatePrintCount();
+}
+
+function updatePrintCount() {
+    const checked = document.querySelectorAll('.print-cb:checked');
+    document.getElementById('print-selected-count').textContent = checked.length;
+    let total = 0;
+    checked.forEach(cb => total += parseFloat(cb.dataset.amount || 0));
+    document.getElementById('print-selected-total').textContent = formatMoney(total);
+}
+
+async function printSelected() {
+    const ids = Array.from(document.querySelectorAll('.print-cb:checked')).map(cb => parseInt(cb.value));
+    if (!ids.length) { showToast('Zaznacz faktury', 'warning'); return; }
+    const printer = document.getElementById('print-printer').value;
+    const resp = await fetch('/api/print', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({invoice_ids: ids, printer: printer || undefined})
+    });
+    const data = await resp.json();
+    showToast(data.message, data.ok ? 'success' : 'error');
+    if (data.ok) loadPrintInvoices();
+}
+
+async function printAllUnprinted() {
+    const printer = document.getElementById('print-printer').value;
+    const resp = await fetch('/api/print/all-new', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({printer: printer || undefined})
+    });
+    const data = await resp.json();
+    showToast(data.message, data.ok ? 'success' : 'error');
+    if (data.ok) loadPrintInvoices();
+}
+
+function showPreview(id) {
+    document.getElementById('preview-modal').classList.remove('hidden');
+    document.getElementById('preview-iframe').src = '/api/print/preview/' + id;
+}
+
+function closePreview() {
+    document.getElementById('preview-modal').classList.add('hidden');
+    document.getElementById('preview-iframe').src = '';
+}
+</script>
+{% endblock %}

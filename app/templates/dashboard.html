@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div id="dashboard-content">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl p-5 shadow-sm border">
+            <p class="text-sm text-gray-500">Faktury sprzedaży</p>
+            <p class="text-2xl font-bold text-gray-800 mt-1" id="stat-sales-count">-</p>
+            <p class="text-sm text-green-600 mt-1" id="stat-sales-gross">-</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border">
+            <p class="text-sm text-gray-500">Faktury kosztowe</p>
+            <p class="text-2xl font-bold text-gray-800 mt-1" id="stat-purchases-count">-</p>
+            <p class="text-sm text-red-500 mt-1" id="stat-purchases-gross">-</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border">
+            <p class="text-sm text-gray-500">Nowe (do przeglądu)</p>
+            <p class="text-2xl font-bold text-orange-500 mt-1" id="stat-new-count">-</p>
+            <a href="/invoices/tinder" class="text-sm text-ksef-600 hover:underline mt-1 inline-block">Przeglądaj &rarr;</a>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border">
+            <p class="text-sm text-gray-500">Niewydrukowane</p>
+            <p class="text-2xl font-bold text-blue-500 mt-1" id="stat-unprinted">-</p>
+            <a href="/print" class="text-sm text-ksef-600 hover:underline mt-1 inline-block">Drukuj &rarr;</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Ostatnie faktury</h3>
+                <a href="/invoices" class="text-sm text-ksef-600 hover:underline">Zobacz wszystkie &rarr;</a>
+            </div>
+            <div id="recent-invoices-table">
+                <p class="text-gray-400 text-sm">Ładowanie...</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border p-5">
+            <h3 class="font-semibold text-gray-700 mb-4">Szybkie akcje</h3>
+            <div class="space-y-3">
+                <button onclick="syncInvoices()" class="w-full bg-ksef-600 hover:bg-ksef-700 text-white px-4 py-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Pobierz nowe faktury
+                </button>
+                <a href="/invoices/tinder" class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    Przeglądaj nowe faktury
+                </a>
+                <button onclick="printAllNew()" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Drukuj wszystkie nowe
+                </button>
+                <a href="/stats" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Statystyki
+                </a>
+            </div>
+            <div class="mt-4 pt-4 border-t text-xs text-gray-400">
+                Ostatnia synchronizacja: <span id="last-sync-time">-</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

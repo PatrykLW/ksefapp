@@ -1,0 +1,12 @@
+config.json
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.spec
+*.egg-info/
+.env
+venv/
+KSeFPanel_Setup/
+*.db

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block page_title %}Jak uzyskać token KSeF?{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">Instrukcja uzyskania tokena KSeF</h2>
+
+        <div class="space-y-6">
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-ksef-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">1</div>
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-1">Wejdź na stronę KSeF</h3>
+                    <p class="text-sm text-gray-500">Otwórz przeglądarkę i przejdź na stronę:
+                        <a href="https://ksef.podatki.gov.pl" target="_blank" class="text-ksef-600 font-medium hover:underline">https://ksef.podatki.gov.pl</a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-ksef-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">2</div>
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-1">Zaloguj się</h3>
+                    <p class="text-sm text-gray-500">Użyj <strong>Profilu Zaufanego</strong> lub <strong>e-Dowodu</strong> do zalogowania się. Upewnij się, że logujesz się na konto powiązane z NIP Twojej firmy.</p>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-ksef-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-1">Przejdź do sekcji Tokeny</h3>
+                    <p class="text-sm text-gray-500">W menu głównym znajdź opcję <strong>"Tokeny"</strong> lub <strong>"Zarządzanie tokenami"</strong>, a następnie kliknij <strong>"Generuj token"</strong>.</p>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-ksef-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">4</div>
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-1">Nadaj nazwę i uprawnienia</h3>
+                    <p class="text-sm text-gray-500">
+                        <strong>Nazwa:</strong> wpisz dowolną (np. "KSeF Panel" lub "Moja aplikacja")<br>
+                        <strong>Uprawnienia:</strong> zaznacz:
+                    </p>
+                    <ul class="text-sm text-gray-500 list-disc list-inside mt-1">
+                        <li><strong>Dostęp do faktur</strong> (pobieranie faktur kosztowych)</li>
+                        <li><strong>Wystawianie faktur</strong> (wysyłanie faktur sprzedażowych)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-ksef-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">5</div>
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-1">Wygeneruj i ZAPISZ token</h3>
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                        <p class="text-sm text-red-700 font-medium">WAŻNE: Token wyświetli się tylko RAZ! Skopiuj go natychmiast i zapisz w bezpiecznym miejscu. Nie będzie możliwości jego ponownego wyświetlenia.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-ksef-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">6</div>
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-1">Wklej token w aplikacji</h3>
+                    <p class="text-sm text-gray-500">Przejdź do <a href="/settings" class="text-ksef-600 font-medium hover:underline">Ustawień</a>, wklej token w pole "Token KSeF", wpisz NIP firmy i kliknij "Zapisz ustawienia".</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-blue-50 rounded-xl p-4">
+            <h3 class="font-semibold text-blue-800 mb-2">Dwa sposoby wklejenia tokena:</h3>
+            <div class="text-sm text-blue-700 space-y-2">
+                <p><strong>Sposób 1 (w aplikacji):</strong> Przejdź do Ustawienia &rarr; wklej token &rarr; Zapisz</p>
+                <p><strong>Sposób 2 (ręcznie):</strong> Otwórz plik <code class="bg-blue-100 px-1.5 py-0.5 rounded">config.json</code> obok pliku EXE Notatnikiem, wklej token w pole <code>"ksef_token"</code>, zapisz plik.</p>
+            </div>
+        </div>
+
+        <div class="mt-6 flex gap-3">
+            <a href="/settings" class="bg-ksef-600 hover:bg-ksef-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition">Przejdź do ustawień</a>
+            <a href="https://ksef.podatki.gov.pl" target="_blank" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">Otwórz ksef.podatki.gov.pl</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

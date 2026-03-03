@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block page_title %}Ustawienia{% endblock %}
+{% block content %}
+
+{% if first_run %}
+<div class="max-w-xl mx-auto mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-5">
+    <h3 class="font-bold text-yellow-800 mb-2">Witaj w KSeF Panel!</h3>
+    <p class="text-sm text-yellow-700">Aby rozpocząć, wpisz swój token KSeF i NIP firmy. Nie wiesz jak uzyskać token?
+        <a href="/settings/help" class="text-ksef-600 font-medium hover:underline">Zobacz instrukcję &rarr;</a>
+    </p>
+</div>
+{% endif %}
+
+<div class="max-w-xl mx-auto">
+    <form id="settings-form" class="bg-white rounded-xl shadow-sm border p-6 space-y-5">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Token KSeF</label>
+            <div class="relative">
+                <input type="password" id="ksef_token" value="{{ config.ksef_token or '' }}"
+                    class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-ksef-500 focus:border-ksef-500 pr-20"
+                    placeholder="Wklej token KSeF...">
+                <button type="button" onclick="toggleTokenVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ksef-600 hover:underline px-2">Pokaż</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Token z <a href="https://ksef.podatki.gov.pl" target="_blank" class="text-ksef-600 hover:underline">ksef.podatki.gov.pl</a>.
+                <a href="/settings/help" class="text-ksef-600 hover:underline">Jak uzyskać?</a></p>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">NIP firmy</label>
+            <input type="text" id="nip" value="{{ config.nip or '' }}"
+                class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-ksef-500 focus:border-ksef-500"
+                placeholder="1234567890" maxlength="10">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Środowisko</label>
+            <select id="environment" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-ksef-500 focus:border-ksef-500">
+                <option value="prod" {% if config.environment == 'prod' %}selected{% endif %}>Produkcja (prawdziwe faktury)</option>
+                <option value="demo" {% if config.environment == 'demo' %}selected{% endif %}>Demo (testowe)</option>
+                <option value="test" {% if config.environment == 'test' %}selected{% endif %}>Test</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Domyślna drukarka</label>
+            <select id="default_printer" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-ksef-500 focus:border-ksef-500">
+                <option value="">Ładowanie drukarek...</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <input type="checkbox" id="auto_fetch_on_start" {% if config.auto_fetch_on_start %}checked{% endif %}
+                class="rounded border-gray-300 text-ksef-600 focus:ring-ksef-500">
+            <label for="auto_fetch_on_start" class="text-sm text-gray-700">Automatycznie pobieraj faktury przy starcie</label>
+        </div>
+
+        <div class="flex gap-3 pt-3">
+            <button type="submit" class="flex-1 bg-ksef-600 hover:bg-ksef-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
+                Zapisz ustawienia
+            </button>
+            <button type="button" onclick="testConnection()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
+                Testuj połączenie
+            </button>
+        </div>
+    </form>
+
+    <div id="test-result" class="mt-4 hidden rounded-xl p-4 text-sm"></div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-6 mt-6">
+        <h3 class="font-semibold text-gray-700 mb-3">Informacje o konfiguracji</h3>
+        <div class="text-sm text-gray-500 space-y-1">
+            <p>Plik konfiguracji: <code class="bg-gray-100 px-2 py-0.5 rounded text-xs">config.json</code> (obok pliku EXE)</p>
+            <p>Możesz edytować plik ręcznie Notatnikiem lub zmienić ustawienia tutaj.</p>
+            <p>Baza danych: <code class="bg-gray-100 px-2 py-0.5 rounded text-xs">ksef_panel.db</code></p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadPrinters();
+
+    document.getElementById('settings-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveSettings();
+    });
+});
+
+async function loadPrinters() {
+    try {
+        const resp = await fetch('/api/printers');
+        const data = await resp.json();
+        const select = document.getElementById('default_printer');
+        const current = '{{ config.default_printer or "" }}';
+        select.innerHTML = '<option value="">-- Wybierz drukarkę --</option>';
+        (data.printers || []).forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name + (p.is_default ? ' (domyślna systemu)' : '');
+            if (p.name === current) opt.selected = true;
+            select.appendChild(opt);
+        });
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function saveSettings() {
+    const data = {
+        ksef_token: document.getElementById('ksef_token').value.trim(),
+        nip: document.getElementById('nip').value.trim(),
+        environment: document.getElementById('environment').value,
+        default_printer: document.getElementById('default_printer').value,
+        auto_fetch_on_start: document.getElementById('auto_fetch_on_start').checked,
+    };
+    try {
+        const resp = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+        if (result.ok) {
+            showToast('Ustawienia zapisane!', 'success');
+        }
+    } catch(e) {
+        showToast('Błąd zapisu: ' + e.message, 'error');
+    }
+}
+
+async function testConnection() {
+    const resultDiv = document.getElementById('test-result');
+    resultDiv.className = 'mt-4 rounded-xl p-4 text-sm bg-blue-50 text-blue-700';
+    resultDiv.textContent = 'Testowanie połączenia...';
+    resultDiv.classList.remove('hidden');
+
+    try {
+        const resp = await fetch('/api/settings/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                ksef_token: document.getElementById('ksef_token').value.trim(),
+                nip: document.getElementById('nip').value.trim(),
+                environment: document.getElementById('environment').value,
+            })
+        });
+        const data = await resp.json();
+        resultDiv.className = 'mt-4 rounded-xl p-4 text-sm ' + (data.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+        resultDiv.textContent = data.message;
+    } catch(e) {
+        resultDiv.className = 'mt-4 rounded-xl p-4 text-sm bg-red-50 text-red-700';
+        resultDiv.textContent = 'Błąd: ' + e.message;
+    }
+}
+
+function toggleTokenVisibility() {
+    const input = document.getElementById('ksef_token');
+    const btn = event.target;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Ukryj';
+    } else {
+        input.type = 'password';
+        btn.textContent = 'Pokaż';
+    }
+}
+</script>
+{% endblock %}

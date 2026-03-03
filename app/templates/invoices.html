@@ -126,11 +126,19 @@ function renderInvoices(invoices) {
         const typeColor = inv.invoice_type === 'sales' ? 'text-green-600' : 'text-red-600';
         const contractor = inv.invoice_type === 'sales' ? inv.buyer_name : inv.seller_name;
 
-        return `<tr class="border-b hover:bg-gray-50 transition">
+        const fuelWarnings = inv.fuel_warnings || [];
+        const hasFuelWarn = fuelWarnings.length > 0;
+        const rowBg = hasFuelWarn ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50';
+        const fuelIcon = hasFuelWarn
+            ? `<span title="${fuelWarnings.map(w=>w.message).join('; ')}" class="inline-block ml-1 text-red-500 cursor-help">&#9888;</span>`
+            : (inv.is_fuel_invoice ? '<span title="Faktura paliwowa OK" class="inline-block ml-1 text-green-500">&#9989;</span>' : '');
+
+        return `<tr class="border-b ${rowBg} transition">
             <td class="p-3"><input type="checkbox" class="inv-checkbox rounded border-gray-300 text-ksef-600" value="${inv.id}"></td>
             <td class="p-3">
-                <a href="/invoices/${inv.id}" class="text-ksef-600 hover:underline font-medium">${inv.invoice_number || inv.ksef_number}</a>
+                <a href="/invoices/${inv.id}" class="text-ksef-600 hover:underline font-medium">${inv.invoice_number || inv.ksef_number}${fuelIcon}</a>
                 <p class="text-xs text-gray-400">${inv.ksef_number}</p>
+                ${hasFuelWarn ? `<p class="text-xs text-red-600 font-medium mt-0.5">${fuelWarnings[0].message}</p>` : ''}
             </td>
             <td class="p-3">${contractor || '-'}</td>
             <td class="p-3 text-gray-500">${inv.issue_date || '-'}</td>

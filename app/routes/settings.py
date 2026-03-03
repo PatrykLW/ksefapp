@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
 from ..services.config_manager import load_config, save_config
 from ..services.ksef_api import KSeFAPI
+from ..services import db
 
 bp = Blueprint('settings', __name__)
 
@@ -42,6 +43,43 @@ def api_test_connection():
     api = KSeFAPI(token=token, nip=nip, environment=env)
     ok, message = api.test_connection()
     return jsonify({'ok': ok, 'message': message})
+
+# --- Vehicles API ---
+
+@bp.route('/api/vehicles')
+def api_get_vehicles():
+    vehicles = db.get_vehicles()
+    return jsonify(vehicles)
+
+@bp.route('/api/vehicles', methods=['POST'])
+def api_add_vehicle():
+    data = request.get_json()
+    plate = data.get('plate', '').strip()
+    brand = data.get('brand', '').strip()
+    model = data.get('model', '').strip()
+    fuel_type = data.get('fuel_type', 'diesel').strip()
+    if not plate:
+        return jsonify({'ok': False, 'message': 'Podaj tablicę rejestracyjną'}), 400
+    db.add_vehicle(plate, brand, model, fuel_type)
+    return jsonify({'ok': True, 'message': f'Dodano pojazd {plate}'})
+
+@bp.route('/api/vehicles/<int:vehicle_id>', methods=['PUT'])
+def api_update_vehicle(vehicle_id):
+    data = request.get_json()
+    plate = data.get('plate', '').strip()
+    brand = data.get('brand', '').strip()
+    model = data.get('model', '').strip()
+    fuel_type = data.get('fuel_type', 'diesel').strip()
+    if not plate:
+        return jsonify({'ok': False, 'message': 'Podaj tablicę rejestracyjną'}), 400
+    db.update_vehicle(vehicle_id, plate, brand, model, fuel_type)
+    return jsonify({'ok': True})
+
+@bp.route('/api/vehicles/<int:vehicle_id>', methods=['DELETE'])
+def api_delete_vehicle(vehicle_id):
+    db.delete_vehicle(vehicle_id)
+    return jsonify({'ok': True})
+
 
 def _mask_token(token):
     if not token or len(token) < 8:

@@ -6,6 +6,7 @@ from ..services import db
 from ..services.config_manager import load_config, save_config
 from ..services.ksef_api import KSeFAPI, KSeFError
 from ..services.invoice_parser import parse_invoice_xml
+from ..services.fuel_validator import validate_fuel_invoice
 
 bp = Blueprint('invoices', __name__)
 logger = logging.getLogger('invoices')
@@ -42,6 +43,15 @@ def api_invoice_list():
     }
     filters = {k: v for k, v in filters.items() if v}
     invoices = db.get_invoices(filters)
+    for inv in invoices:
+        items = []
+        if inv.get('xml_content'):
+            parsed = parse_invoice_xml(inv['xml_content'])
+            if parsed:
+                items = parsed.get('items', [])
+        validation = validate_fuel_invoice(inv, items)
+        inv['fuel_warnings'] = validation['warnings']
+        inv['is_fuel_invoice'] = validation['is_fuel_invoice']
     return jsonify(invoices)
 
 @bp.route('/api/invoices/<int:invoice_id>')
@@ -72,6 +82,12 @@ def api_tinder_next():
         if parsed:
             items = parsed.get('items', [])
     inv['items'] = items
+    validation = validate_fuel_invoice(inv, items)
+    inv['fuel_warnings'] = validation['warnings']
+    inv['is_fuel_invoice'] = validation['is_fuel_invoice']
+    inv['fuel_detected_plates'] = validation['detected_plates']
+    inv['fuel_detected_fuels'] = validation['detected_fuel_types']
+    inv['fuel_matched_vehicle'] = validation['matched_vehicle']
     return jsonify({'invoice': inv, 'remaining': total})
 
 @bp.route('/api/invoices/sync', methods=['POST'])

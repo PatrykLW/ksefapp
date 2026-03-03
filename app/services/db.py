@@ -30,6 +30,13 @@ def init_db():
                 printed INTEGER DEFAULT 0,
                 notes TEXT DEFAULT ''
             );
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                plate TEXT NOT NULL,
+                brand TEXT DEFAULT '',
+                model TEXT DEFAULT '',
+                fuel_type TEXT NOT NULL DEFAULT 'diesel'
+            );
             CREATE TABLE IF NOT EXISTS sync_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sync_date TEXT NOT NULL,
@@ -194,6 +201,40 @@ def get_top_contractors(limit=10, invoice_type=None):
             ORDER BY total DESC LIMIT ?
         """, params + [limit]).fetchall()
     return [dict(r) for r in rows]
+
+# --- Vehicles ---
+
+def get_vehicles():
+    with get_connection() as conn:
+        rows = conn.execute("SELECT * FROM vehicles ORDER BY plate").fetchall()
+    return [dict(r) for r in rows]
+
+def get_vehicle_by_id(vehicle_id):
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM vehicles WHERE id = ?", (vehicle_id,)).fetchone()
+    return dict(row) if row else None
+
+def add_vehicle(plate, brand, model, fuel_type):
+    plate = plate.strip().upper().replace(' ', '')
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO vehicles (plate, brand, model, fuel_type) VALUES (?, ?, ?, ?)",
+            (plate, brand.strip(), model.strip(), fuel_type.strip().lower())
+        )
+
+def update_vehicle(vehicle_id, plate, brand, model, fuel_type):
+    plate = plate.strip().upper().replace(' ', '')
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE vehicles SET plate=?, brand=?, model=?, fuel_type=? WHERE id=?",
+            (plate, brand.strip(), model.strip(), fuel_type.strip().lower(), vehicle_id)
+        )
+
+def delete_vehicle(vehicle_id):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
+
+# --- Sync ---
 
 def log_sync(count, status='success', message=''):
     with get_connection() as conn:
